@@ -1,0 +1,242 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
+import { Play, Pause, RotateCcw } from 'lucide-react';
+
+const SpeedReader = () => {
+  const [text, setText] = useState('');
+  const [words, setWords] = useState([]);
+  const [currentWordIndex, setCurrentWordIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [wpm, setWpm] = useState(300);
+  const [fontSize, setFontSize] = useState(32);
+  const [backgroundColor, setBackgroundColor] = useState('#ffffff');
+  const [selectedFont, setSelectedFont] = useState('OpenDyslexic');
+
+  // Define font families
+  const fonts = {
+    OpenDyslexic: {
+      name: 'OpenDyslexic',
+      family: "'OpenDyslexic', Arial, sans-serif",
+      displayName: 'OpenDyslexic'
+    },
+    Arial: {
+      name: 'Arial',
+      family: 'Arial, sans-serif',
+      displayName: 'Arial'
+    }
+  };
+
+  // Split text into words when input changes
+  const processText = useCallback((inputText) => {
+    const processedWords = inputText
+      .trim()
+      .replace(/[\n\r]/g, ' ')
+      .split(/\s+/)
+      .filter(word => word.length > 0);
+    setWords(processedWords);
+    setCurrentWordIndex(0);
+    setIsPlaying(false);
+  }, []);
+
+  // Handle text input
+  const handleTextInput = (e) => {
+    setText(e.target.value);
+    processText(e.target.value);
+  };
+
+  // Split word into two parts for different styling
+  const splitWord = (word) => {
+    const midpoint = Math.ceil(word.length / 2);
+    return {
+      first: word.slice(0, midpoint),
+      second: word.slice(midpoint)
+    };
+  };
+
+  // Control playback
+  useEffect(() => {
+    let interval;
+    if (isPlaying && currentWordIndex < words.length) {
+      interval = setInterval(() => {
+        setCurrentWordIndex(prev => {
+          if (prev >= words.length - 1) {
+            setIsPlaying(false);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, (60000 / wpm));
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying, words.length, wpm]);
+
+  // Color options
+  const colorOptions = [
+    { name: 'White', value: '#ffffff' },
+    { name: 'Cream', value: '#faf3e0' },
+    { name: 'Light Blue', value: '#e6f3ff' },
+    { name: 'Light Green', value: '#e6ffe6' },
+    { name: 'Light Pink', value: '#ffe6e6' }
+  ];
+
+  // Current font family
+  const currentFontFamily = fonts[selectedFont].family;
+
+  return (
+    <div className="max-w-2xl mx-auto p-4">
+      <style>
+        {`
+          @font-face {
+            font-family: 'OpenDyslexic';
+            src: url('/fonts/OpenDyslexic-Regular.otf') format('opentype');
+            font-weight: normal;
+            font-style: normal;
+          }
+
+          @font-face {
+            font-family: 'OpenDyslexic';
+            src: url('/fonts/OpenDyslexic-Bold.otf') format('opentype');
+            font-weight: bold;
+            font-style: normal;
+          }
+
+          .custom-font {
+            font-family: ${currentFontFamily};
+          }
+        `}
+      </style>
+      
+      <Card className="mb-4">
+        <CardContent className="p-6">
+          <textarea
+            value={text}
+            onChange={handleTextInput}
+            placeholder="Paste your text here..."
+            className="w-full h-32 p-2 mb-4 border rounded"
+            style={{ 
+              backgroundColor,
+              fontFamily: currentFontFamily,
+              fontSize: '16px'
+            }}
+          />
+
+          <div className="flex flex-col gap-4 mb-4">
+            <div>
+              <label className="block mb-2 custom-font">Font Style:</label>
+              <div className="flex gap-2">
+                {Object.values(fonts).map(font => (
+                  <Button
+                    key={font.name}
+                    onClick={() => setSelectedFont(font.name)}
+                    variant={selectedFont === font.name ? "default" : "outline"}
+                    className="w-32"
+                    style={{ fontFamily: font.family }}
+                  >
+                    {font.displayName}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block mb-2 custom-font">
+                Words per minute: {wpm}
+              </label>
+              <Slider
+                value={[wpm]}
+                onValueChange={([value]) => setWpm(value)}
+                min={100}
+                max={1000}
+                step={50}
+                className="w-full"
+              />
+            </div>
+
+            <div>
+              <label className="block mb-2 custom-font">
+                Font size: {fontSize}px
+              </label>
+              <Slider
+                value={[fontSize]}
+                onValueChange={([value]) => setFontSize(value)}
+                min={16}
+                max={72}
+                step={4}
+                className="w-full"
+              />
+            </div>
+
+            <div>
+              <label className="block mb-2 custom-font">Background Color:</label>
+              <div className="flex gap-2">
+                {colorOptions.map(color => (
+                  <button
+                    key={color.value}
+                    onClick={() => setBackgroundColor(color.value)}
+                    className="w-8 h-8 rounded border"
+                    style={{ backgroundColor: color.value }}
+                    aria-label={color.name}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div 
+            className="flex justify-center items-center h-32 mb-4 rounded border"
+            style={{ 
+              backgroundColor,
+              fontFamily: currentFontFamily,
+              fontSize: `${fontSize}px`,
+            }}
+          >
+            {words.length > 0 ? (
+              <div className="text-center" style={{ fontFamily: currentFontFamily }}>
+                {(() => {
+                  const { first, second } = splitWord(words[currentWordIndex]);
+                  return (
+                    <span style={{ fontFamily: 'inherit' }}>
+                      <strong style={{ fontFamily: 'inherit' }}>{first}</strong>
+                      {second}
+                    </span>
+                  );
+                })()}
+              </div>
+            ) : (
+              <div className="text-gray-400" style={{ fontFamily: currentFontFamily }}>
+                Paste some text to begin...
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-center gap-4">
+            <Button
+              onClick={() => setIsPlaying(!isPlaying)}
+              disabled={words.length === 0}
+              className="custom-font"
+            >
+              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+              {isPlaying ? ' Pause' : ' Play'}
+            </Button>
+            <Button
+              onClick={() => setCurrentWordIndex(0)}
+              disabled={currentWordIndex === 0}
+              className="custom-font"
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Reset
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="text-sm text-gray-600 custom-font">
+        Progress: {words.length > 0 ? `${currentWordIndex + 1} / ${words.length} words` : 'No text'}
+      </div>
+    </div>
+  );
+};
+
+export default SpeedReader;
